@@ -135,8 +135,8 @@ def import_net(input_file_path, return_stochastic_information=False):
                                 random_variable.set_weight(weight)
                 if not trans_visible:
                     trans_label = None
-                #if "INVISIBLE" in trans_label:
-                #    trans_label = None
+                if "INVISIBLE" in trans_label:
+                    trans_label = None
 
                 trans_dict[trans_name] = petri.petrinet.PetriNet.Transition(trans_name, trans_label)
                 net.transitions.add(trans_dict[trans_name])
