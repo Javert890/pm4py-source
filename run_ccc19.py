@@ -15,6 +15,7 @@ from pm4py.algo.filtering.log.attributes import attributes_filter
 from pm4py.objects.conversion.log import factory as log_conv_factory
 from pm4py.objects.random_variables.random_variable import RandomVariable
 from pm4py.util import constants
+from pm4py.objects.log.log import EventLog, Trace
 
 
 def print_dictio(round_trans_fit, resources, activities):
@@ -95,33 +96,56 @@ parameters_filt_round = {constants.PARAMETER_CONSTANT_ATTRIBUTE_KEY: "ROUND"}
 parameters_filt_resource = {constants.PARAMETER_CONSTANT_ATTRIBUTE_KEY: "org:resource"}
 
 log = xes_importer.apply("ccc19.xes")
+log = attributes_filter.apply_events(log, ["complete"], parameters=parameters_filt_transition)
 av = attributes_filter.get_attribute_values(log, "concept:name")
+all_values = {}
 act_rv = {}
-min_values = {}
-max_values = {}
-median_values = {}
-median_llh = {}
+lv_min = {}
+lv_max = {}
 for activity in av.keys():
     flog = attributes_filter.apply_events(log, [activity])
     values = []
     for trace in flog:
         i = 0
-        while i < len(trace)-1:
-            if (trace[i]["concept:name"] == trace[i+1]["concept:name"]
-                and trace[i]["lifecycle:transition"] == "start"
-                and trace[i+1]["lifecycle:transition"] == "complete"):
-                    values.append(int(trace[i+1]["VIDEOEND"]) - int(trace[i]["VIDEOSTART"]) + 0.0001)
+        while i < len(trace):
+            values.append(int(trace[i]["VIDEOEND"]) - int(trace[i]["VIDEOSTART"]))
             i = i + 1
     values = sorted(values)
     v = RandomVariable()
     v.calculate_parameters(values)
     act_rv[activity] = v
-    median_values[activity] = values[int(len(values)/2)]
-    median_llh[activity] = v.calculate_loglikelihood([values[int(len(values)/2)]])
-print(act_rv)
-print(median_values)
-print(median_llh)
-log = attributes_filter.apply_events(log, ["complete"], parameters=parameters_filt_transition)
+    all_values[activity] = values
+    lv_min[activity] = (v.calculate_loglikelihood([values[0], values[0]]))/2.0
+    lv_max[activity] = (v.calculate_loglikelihood([values[-1], values[-1]])) / 2.0
+#print(act_rv)
+#print(median_values)
+#print(all_values)
+#print(act_rv)
+#print(lv_min)
+#print(lv_max)
+#print(median_llh)
+#print(min_llh)
+new_log = EventLog()
+i = 0
+while i < len(log):
+    j = 0
+    while j < len(log[i]):
+        trace = Trace()
+        activity = log[i][j]["concept:name"]
+        diff = int(log[i][j]["VIDEOEND"]) - int(log[i][j]["VIDEOSTART"])
+        rv = act_rv[activity]
+        if not rv.get_transition_type() == "IMMEDIATE":
+            likelihood = rv.calculate_loglikelihood([diff, diff])
+            if diff > 0 and likelihood < -8:
+                pass
+            else:
+                trace.append(log[i][j])
+        else:
+            trace.append(log[i][j])
+        new_log.append(trace)
+        j = j + 1
+    i = i + 1
+log = new_log
 net, im, fm = petri_importer.import_net("ccc19.pnml")
 gviz = pn_vis_factory.apply(net, im, fm)
 pn_vis_factory.save(gviz, "ccc19.png")
@@ -158,8 +182,8 @@ for trans in transition_fitness_per_trace_post:
                 post_round_resource_activity[ex["org:resource"]][trans.label] + 1
 
 diff = calculate_diff(pre_round_resource_activity, post_round_resource_activity, resources, activities)
-calculate_pearson(pre_round_resource_activity, resources, activities)
-print_dictio(pre_round_resource_activity, resources, activities)
+#calculate_pearson(pre_round_resource_activity, resources, activities)
+#print_dictio(diff, resources, activities)
 
 #hw_metric_pre = sna_factory.apply(pre_round_log, variant="handover")
 #hw_metric_post = sna_factory.apply(post_round_log, variant="handover")
