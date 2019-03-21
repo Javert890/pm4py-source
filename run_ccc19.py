@@ -117,6 +117,9 @@ for activity in av.keys():
     all_values[activity] = values
     lv_min[activity] = (v.calculate_loglikelihood([values[0], values[0]]))/2.0
     lv_max[activity] = (v.calculate_loglikelihood([values[-1], values[-1]])) / 2.0
+for act in all_values:
+    stru = str(all_values[act])[1:-1].replace(", "," ")
+    print(act + " & " + stru + " \\\\")
 #print(act_rv)
 #print(median_values)
 #print(all_values)
