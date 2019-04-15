@@ -59,7 +59,7 @@ class Normal(BasicStructureRandomVariable):
         distribution_parameters
             String representing distribution parameters
         """
-        return str(self.mu) + ";" + str(self.sigma)
+        return "%.2f;%.2f" % (self.mu, self.sigma)
 
     def calculate_loglikelihood(self, values):
         """

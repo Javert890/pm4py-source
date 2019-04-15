@@ -60,7 +60,7 @@ class Exponential(BasicStructureRandomVariable):
             String representing distribution parameters
         """
         if self.scale > 0:
-            return str(1.0 / float(self.scale))
+            return "%.2f" % (1.0 / float(self.scale))
         return "UNDEFINED"
 
     def calculate_loglikelihood(self, values):

@@ -59,7 +59,7 @@ class Uniform(BasicStructureRandomVariable):
         distribution_parameters
             String representing distribution parameters
         """
-        return str(self.loc) + ";" + str(self.scale)
+        return "%.2f;%.2f" % (self.loc, self.scale)
 
     def calculate_loglikelihood(self, values):
         """

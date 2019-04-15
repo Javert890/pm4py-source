@@ -37,15 +37,17 @@ def print_dictio(round_trans_fit, resources, activities):
         for index, act in enumerate(activities):
             if index > 0:
                 line = line + " & "
-            line = line + str(round_trans_fit[res][act])
-            sum_res = sum_res + round_trans_fit[res][act]
+            value = round_trans_fit[res][act] if res in round_trans_fit and act in round_trans_fit[res] else 0
+            line = line + str(value)
+            sum_res = sum_res + value
         line = line + " & " + str(sum_res) + " \\\\"
         print(line)
     bottom = "\\hline\n{\\bf Sum}"
     for act in activities:
         sum_act = 0
         for res in resources:
-            sum_act = sum_act + round_trans_fit[res][act]
+            value = round_trans_fit[res][act] if res in round_trans_fit and act in round_trans_fit[res] else 0
+            sum_act = sum_act + value
         bottom = bottom + " & " + str(sum_act)
     bottom = bottom + " & ~ \\\\ \n\\hline"
     print(bottom)
@@ -117,24 +119,28 @@ for activity in av.keys():
     all_values[activity] = values
     lv_min[activity] = (v.calculate_loglikelihood([values[0], values[0]]))/2.0
     lv_max[activity] = (v.calculate_loglikelihood([values[-1], values[-1]])) / 2.0
-for act in all_values:
+
+"""for act in all_values:
     stru = str(all_values[act])[1:-1].replace(", "," ")
-    print(act + " & " + stru + " \\\\")
-#print(act_rv)
-#print(median_values)
-#print(all_values)
-#print(act_rv)
-#print(lv_min)
-#print(lv_max)
-#print(median_llh)
-#print(min_llh)
+    print(act + " & " + stru + " \\\\")"""
+
+"""
+for activity in act_rv:
+    if str(act_rv[activity]) == "IMMEDIATE":
+        print("%s & %s & ~ & ~ & ~ \\\\" % (activity, str(act_rv[activity])))
+    else:
+        print("%s & %s & %.2f & %.2f \\\\" % (activity, str(act_rv[activity]).replace(" "," & "), lv_min[activity], lv_max[activity]))
+"""
+
 new_log = EventLog()
+violations_loglikelihood = {}
 i = 0
 while i < len(log):
     j = 0
     while j < len(log[i]):
         trace = Trace()
         activity = log[i][j]["concept:name"]
+        resource = log[i][j]["org:resource"]
         diff = int(log[i][j]["VIDEOEND"]) - int(log[i][j]["VIDEOSTART"])
         rv = act_rv[activity]
         if not rv.get_transition_type() == "IMMEDIATE":
@@ -148,7 +154,7 @@ while i < len(log):
         new_log.append(trace)
         j = j + 1
     i = i + 1
-log = new_log
+#log = new_log
 net, im, fm = petri_importer.import_net("ccc19.pnml")
 gviz = pn_vis_factory.apply(net, im, fm)
 pn_vis_factory.save(gviz, "ccc19.png")
@@ -161,9 +167,13 @@ activities = sorted(attributes_filter.get_attribute_values(log, "concept:name"))
 for res in resources:
     pre_round_resource_activity[res] = {}
     post_round_resource_activity[res] = {}
+    if not res in violations_loglikelihood:
+        violations_loglikelihood[res] = {}
     for trans in activities:
         pre_round_resource_activity[res][trans] = 0
         post_round_resource_activity[res][trans] = 0
+        if not trans in violations_loglikelihood[res]:
+            violations_loglikelihood[res][trans] = 0
 
 aligned_traces_pre, place_fitness_per_trace_pre, transition_fitness_per_trace_pre, notexisting_activities_in_model_pre = tr_rep_factory.apply(
     pre_round_log, net, im, fm,
@@ -177,12 +187,21 @@ for trans in transition_fitness_per_trace_pre:
         for ex in transition_fitness_per_trace_pre[trans]["underfed_traces"][trace]:
             pre_round_resource_activity[ex["org:resource"]][trans.label] = \
                 pre_round_resource_activity[ex["org:resource"]][trans.label] + 1
+            rv = act_rv[trans.label]
+            if not rv.get_transition_type() == "IMMEDIATE":
+                diff = int(ex["VIDEOEND"]) - int(ex["VIDEOSTART"])
+                likelihood = rv.calculate_loglikelihood([diff, diff])
+                if diff > 0 and likelihood < -8:
+                    violations_loglikelihood[ex["org:resource"]][trans.label] += 1
 
 for trans in transition_fitness_per_trace_post:
     for trace in transition_fitness_per_trace_post[trans]["underfed_traces"]:
         for ex in transition_fitness_per_trace_post[trans]["underfed_traces"][trace]:
             post_round_resource_activity[ex["org:resource"]][trans.label] = \
                 post_round_resource_activity[ex["org:resource"]][trans.label] + 1
+
+#print_dictio(violations_loglikelihood, resources, activities)
+#input()
 
 diff = calculate_diff(pre_round_resource_activity, post_round_resource_activity, resources, activities)
 #calculate_pearson(pre_round_resource_activity, resources, activities)
