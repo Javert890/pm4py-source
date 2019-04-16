@@ -16,7 +16,7 @@ from pm4py.objects.conversion.log import factory as log_conv_factory
 from pm4py.objects.random_variables.random_variable import RandomVariable
 from pm4py.util import constants
 from pm4py.objects.log.log import EventLog, Trace
-
+from pm4py.algo.conformance.tokenreplay.diagnostics import duration_diagnostics
 
 def print_dictio(round_trans_fit, resources, activities):
     tabular = "\\begin{tabular}{l|"
@@ -181,6 +181,16 @@ aligned_traces_pre, place_fitness_per_trace_pre, transition_fitness_per_trace_pr
 aligned_traces_post, place_fitness_per_trace_post, transition_fitness_per_trace_post, notexisting_activities_in_model_post = tr_rep_factory.apply(
     post_round_log, net, im, fm,
     parameters={"enable_pltr_fitness": True, "disable_variants": True, "cleaning_token_flood": True})
+
+print(transition_fitness_per_trace_pre)
+
+trans_diagnostics = duration_diagnostics.diagnose_from_trans_fitness(post_round_log, transition_fitness_per_trace_post)
+for trans in trans_diagnostics:
+    #print(trans, trans_diagnostics[trans])
+    stru = "%s & %d & %d & %d & %d & %.2f \\\\" % (str(trans), trans_diagnostics[trans]["n_fit"], trans_diagnostics[trans]["n_underfed"], trans_diagnostics[trans]["fit_median_time"], trans_diagnostics[trans]["underfed_median_time"], trans_diagnostics[trans]["relative_throughput"])
+    print(stru)
+
+input()
 
 for trans in transition_fitness_per_trace_pre:
     for trace in transition_fitness_per_trace_pre[trans]["underfed_traces"]:
